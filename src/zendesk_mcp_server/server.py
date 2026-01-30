@@ -22,6 +22,24 @@ logger = logging.getLogger("zendesk-mcp-server")
 logger.info("zendesk mcp server started")
 
 load_dotenv()
+
+# Tool filtering via environment variable
+# Set ZENDESK_ALLOWED_TOOLS=get_ticket,get_tickets,get_ticket_comments to restrict to read-only
+_allowed_tools_env = os.getenv("ZENDESK_ALLOWED_TOOLS", "").strip()
+ALLOWED_TOOLS: list[str] | None = (
+    [t.strip() for t in _allowed_tools_env.split(",") if t.strip()]
+    if _allowed_tools_env
+    else None
+)
+
+
+def is_tool_allowed(tool_name: str) -> bool:
+    """Check if a tool is allowed based on ZENDESK_ALLOWED_TOOLS env var."""
+    if ALLOWED_TOOLS is None:
+        return True  # No filtering if env var not set
+    return tool_name in ALLOWED_TOOLS
+
+
 zendesk_client = ZendeskClient(
     subdomain=os.getenv("ZENDESK_SUBDOMAIN"),
     email=os.getenv("ZENDESK_EMAIL"),
@@ -125,7 +143,7 @@ async def handle_get_prompt(name: str, arguments: Dict[str, str] | None) -> type
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
     """List available Zendesk tools"""
-    return [
+    all_tools = [
         types.Tool(
             name="get_ticket",
             description="Retrieve a Zendesk ticket by its ID",
@@ -246,6 +264,10 @@ async def handle_list_tools() -> list[types.Tool]:
             }
         )
     ]
+    # Filter tools based on ZENDESK_ALLOWED_TOOLS environment variable
+    if ALLOWED_TOOLS is not None:
+        return [t for t in all_tools if t.name in ALLOWED_TOOLS]
+    return all_tools
 
 
 @server.call_tool()
@@ -254,6 +276,13 @@ async def handle_call_tool(
         arguments: dict[str, Any] | None
 ) -> list[types.TextContent]:
     """Handle Zendesk tool execution requests"""
+    # Check if tool is allowed based on ZENDESK_ALLOWED_TOOLS
+    if not is_tool_allowed(name):
+        return [types.TextContent(
+            type="text",
+            text=f"Error: Tool '{name}' is not allowed by ZENDESK_ALLOWED_TOOLS configuration"
+        )]
+
     try:
         if name == "get_ticket":
             if not arguments:
