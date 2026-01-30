@@ -7,8 +7,9 @@ from typing import Any, Dict
 from cachetools.func import ttl_cache
 from dotenv import load_dotenv
 from mcp.server import InitializationOptions, NotificationOptions
-from mcp.server import Server, types
+from mcp.server import Server
 from mcp.server.stdio import stdio_server
+from mcp import types
 from pydantic import AnyUrl
 
 from zendesk_mcp_server.zendesk_client import ZendeskClient

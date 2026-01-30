@@ -1,6 +1,6 @@
 {
   "name": "@zudello/zendesk-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zendesk MCP server for Claude Code - reads tickets and comments",
   "bin": {
     "zendesk-mcp": "./bin/zendesk-mcp.js"
